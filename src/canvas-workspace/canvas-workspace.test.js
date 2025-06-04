@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'; // Added vi
 import CanvasWorkspace from './canvas-workspace.js';
 
 describe('CanvasWorkspace Component', () => {
@@ -215,5 +215,136 @@ describe('CanvasWorkspace Component', () => {
       expect(element.currentY).toBeCloseTo(30);
       expect(element.g.getAttribute('transform')).toBe(`translate(60, 30) scale(1.1)`);
     });
+  });
+});
+
+describe('Drop Functionality', () => {
+  let element;
+  let container;
+  const mockSymbolSvg = '<circle cx="10" cy="10" r="5" fill="blue" />';
+  const mockSymbolData = { name: 'TestSymbol', svg: mockSymbolSvg };
+  const mockBoundingClientRect = { left: 0, top: 0, width: 800, height: 600, right: 800, bottom: 600, x: 0, y: 0 };
+
+  beforeEach(() => {
+    container = document.createElement('div');
+    document.body.appendChild(container);
+
+    // Ensure the custom element is defined (though CanvasWorkspace might not need it explicitly if always new'd)
+    if (!customElements.get('canvas-workspace')) {
+        customElements.define('canvas-workspace', CanvasWorkspace);
+    }
+    element = new CanvasWorkspace(); // Creates instance
+    container.appendChild(element); // Appends to DOM, which calls connectedCallback implicitly if it's a custom element standard lifecycle
+    // However, the original tests call connectedCallback explicitly, so we might keep that if issues arise.
+    // For now, assuming standard custom element behavior where appendChild triggers connectedCallback.
+    // If element.svg is null, then explicit call to element.connectedCallback() is needed.
+    if (!element.svg) {
+      element.connectedCallback(); // Ensure SVG and g are created.
+    }
+
+    // Mock getBoundingClientRect for the SVG element
+    element.svg.getBoundingClientRect = vi.fn(() => mockBoundingClientRect);
+  });
+
+  afterEach(() => {
+    if (element && element.parentNode) {
+      element.parentNode.removeChild(element);
+    }
+    if (container && container.parentNode) {
+      container.parentNode.removeChild(container);
+    }
+    element = null;
+    container = null;
+    vi.restoreAllMocks(); // Restore any mocks after each test
+  });
+
+  it('should handle dragover correctly', () => {
+    const mockDataTransfer = {
+      dropEffect: ''
+    };
+    const dragOverEvent = new DragEvent('dragover', {
+      bubbles: true,
+      cancelable: true,
+      dataTransfer: mockDataTransfer
+    });
+
+    element.svg.dispatchEvent(dragOverEvent);
+
+    expect(dragOverEvent.defaultPrevented).toBe(true);
+    expect(mockDataTransfer.dropEffect).toBe('copy');
+  });
+
+  it('should handle drop correctly and place symbol with default pan/zoom', () => {
+    const clientX = 100;
+    const clientY = 50;
+    const mockGetData = vi.fn().mockReturnValue(JSON.stringify(mockSymbolData));
+    const mockDataTransfer = {
+      getData: mockGetData,
+      dropEffect: '' // Not strictly needed for drop, but part of interface
+    };
+
+    const dropEvent = new DragEvent('drop', {
+      bubbles: true,
+      cancelable: true,
+      clientX: clientX,
+      clientY: clientY,
+      dataTransfer: mockDataTransfer
+    });
+
+    element.svg.dispatchEvent(dropEvent);
+
+    expect(dropEvent.defaultPrevented).toBe(true);
+    expect(mockGetData).toHaveBeenCalledWith('application/json');
+
+    const addedSymbolGroup = element.g.lastChild;
+    expect(addedSymbolGroup).not.toBeNull();
+    expect(addedSymbolGroup.tagName.toLowerCase()).toBe('g');
+    // Note: innerHTML of an SVG element might be cased differently by the parser or serialized differently.
+    // It's safer to check for structural elements or specific attributes if possible.
+    // For this case, if the SVG string is simple and controlled, direct match might be okay.
+    expect(addedSymbolGroup.innerHTML).toBe(mockSymbolData.svg);
+
+    const expectedSvgX = (clientX - mockBoundingClientRect.left - element.currentX) / element.currentScale;
+    const expectedSvgY = (clientY - mockBoundingClientRect.top - element.currentY) / element.currentScale;
+
+    expect(addedSymbolGroup.getAttribute('transform')).toBe(`translate(${expectedSvgX}, ${expectedSvgY})`);
+  });
+
+  it('should handle drop correctly and place symbol with custom pan/zoom', () => {
+    // Set custom pan/zoom
+    element.currentX = 50;
+    element.currentY = 20;
+    element.currentScale = 0.5;
+    element.updateTransform(); // Ensure the main group's transform is updated if necessary for logic (though not directly used in calc here)
+
+    const clientX = 150;
+    const clientY = 100;
+    const mockGetData = vi.fn().mockReturnValue(JSON.stringify(mockSymbolData));
+    const mockDataTransfer = {
+      getData: mockGetData
+    };
+
+    const dropEvent = new DragEvent('drop', {
+      bubbles: true,
+      cancelable: true,
+      clientX: clientX,
+      clientY: clientY,
+      dataTransfer: mockDataTransfer
+    });
+
+    element.svg.dispatchEvent(dropEvent);
+
+    expect(dropEvent.defaultPrevented).toBe(true);
+    expect(mockGetData).toHaveBeenCalledWith('application/json');
+
+    const addedSymbolGroup = element.g.lastChild;
+    expect(addedSymbolGroup).not.toBeNull();
+    expect(addedSymbolGroup.tagName.toLowerCase()).toBe('g');
+    expect(addedSymbolGroup.innerHTML).toBe(mockSymbolData.svg);
+
+    const expectedSvgX = (clientX - mockBoundingClientRect.left - element.currentX) / element.currentScale;
+    const expectedSvgY = (clientY - mockBoundingClientRect.top - element.currentY) / element.currentScale;
+
+    expect(addedSymbolGroup.getAttribute('transform')).toBe(`translate(${expectedSvgX}, ${expectedSvgY})`);
   });
 });
