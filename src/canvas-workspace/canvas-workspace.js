@@ -1,4 +1,4 @@
-import BaseComponent from '../../BaseComponent.js';
+import BaseComponent from '../BaseComponent.js';
 
 class CanvasWorkspace extends BaseComponent {
     constructor() {
