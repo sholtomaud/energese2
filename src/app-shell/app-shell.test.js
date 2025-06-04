@@ -18,4 +18,13 @@ describe('AppShell Component', () => {
     expect(header).not.toBeNull();
     expect(header.textContent).toContain('Dynamic Systems Modeler');
   });
+
+  it('should render a footer element', async () => {
+    document.body.innerHTML = '<app-shell></app-shell>';
+    const appShellElement = document.body.querySelector('app-shell');
+    await new Promise(resolve => setTimeout(resolve, 0)); // Wait for potential async rendering
+
+    const footer = appShellElement.shadowRoot ? appShellElement.shadowRoot.querySelector('footer') : appShellElement.querySelector('footer');
+    expect(footer).not.toBeNull();
+  });
 });
