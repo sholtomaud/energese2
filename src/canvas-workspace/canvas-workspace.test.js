@@ -264,7 +264,6 @@ describe('Drop Functionality', () => {
   let container;
   const mockSymbolSvg = '<circle cx="10" cy="10" r="5" fill="blue" />';
   const mockSymbolData = { name: 'TestSymbol', svg: mockSymbolSvg };
-  const mockSymbolData = { name: 'TestSymbol', svg: mockSymbolSvg };
   const mockBoundingClientRect = { left: 0, top: 0, width: 800, height: 600, right: 800, bottom: 600, x: 0, y: 0 };
 
   beforeEach(() => {
