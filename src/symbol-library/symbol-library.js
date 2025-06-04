@@ -61,7 +61,8 @@ class SymbolLibrary extends BaseComponent {
           display: block; /* Remove extra space below SVG */
           margin: 0 auto; /* Center SVG if it's smaller than li */
         }
-        /* You could add a class to show names if desired, e.g., by adding <span class="symbol-name">${symbol.name}</span>
+        /* You could add a class to show names if desired, e.g., by adding <span class="symbol-name">\${symbol.name}</span> */
+        /*
         ul.symbol-list li .symbol-name {
           font-size: 0.8em;
           margin-top: 3px;
