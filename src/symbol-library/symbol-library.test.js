@@ -1,3 +1,20 @@
+// Mock DataTransfer if not available
+if (typeof DataTransfer === 'undefined') {
+  global.DataTransfer = class {
+    constructor() {
+      this.data = {};
+      this.dropEffect = 'none';
+      this.effectAllowed = 'all';
+    }
+    setData(format, data) {
+      this.data[format] = data;
+    }
+    getData(format) {
+      return this.data[format];
+    }
+  };
+}
+
 // Mock DragEvent at the start of the test file
 if (typeof DragEvent === 'undefined') {
   global.DragEvent = class {
@@ -188,31 +205,31 @@ describe('SymbolLibrary Drag Functionality', () => {
     const symbolListItem = element.querySelector('ul.symbol-list li');
     expect(symbolListItem).not.toBeNull();
 
-    const mockSetData = vi.fn();
-    const mockDataTransfer = {
-      setData: mockSetData,
-      effectAllowed: '' // To check if it's set
-    };
+    const mockDataTransfer = new DataTransfer(); // Use the global mock
+    // Spy on setData of the DataTransfer instance
+    vi.spyOn(mockDataTransfer, 'setData');
 
     // The component instance `element` has the `symbols` array.
     const symbolName = symbolListItem.dataset.symbolName;
     const expectedSymbolData = element.symbols.find(s => s.name === symbolName);
     expect(expectedSymbolData).toBeDefined();
 
-    const dragEvent = new DragEvent('dragstart', {
+    const dragStartEvent = new DragEvent('dragstart', { // Renamed for clarity
       bubbles: true,
       cancelable: true,
       dataTransfer: mockDataTransfer
     });
 
-    symbolListItem.dispatchEvent(dragEvent);
+    symbolListItem.dispatchEvent(dragStartEvent);
 
-    expect(mockSetData).toHaveBeenCalledTimes(1);
-    expect(mockSetData).toHaveBeenCalledWith(
+    expect(mockDataTransfer.setData).toHaveBeenCalledTimes(1);
+    expect(mockDataTransfer.setData).toHaveBeenCalledWith(
       'application/json',
       JSON.stringify({ name: expectedSymbolData.name, svg: expectedSymbolData.svg })
     );
 
-    expect(mockDataTransfer.effectAllowed).toBe('copy');
+    // The component itself sets event.dataTransfer.effectAllowed
+    // So we check it on the event's dataTransfer object.
+    expect(dragStartEvent.dataTransfer.effectAllowed).toBe('copy');
   });
 });

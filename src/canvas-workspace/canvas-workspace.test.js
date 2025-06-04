@@ -1,3 +1,23 @@
+// Mock DataTransfer if not available
+if (typeof DataTransfer === 'undefined') {
+  global.DataTransfer = class {
+    constructor() {
+      this.data = {};
+      this.dropEffect = 'none'; // Common default
+      this.effectAllowed = 'all'; // Common default
+    }
+    setData(format, data) {
+      this.data[format] = data;
+    }
+    getData(format) {
+      return this.data[format];
+    }
+    // Add other common DataTransfer properties/methods if needed by tests
+    // clearData() { this.data = {}; }
+    // setDragImage() {} // Often a no-op in mocks
+  };
+}
+
 // Add this at the start of the test file
 if (typeof DragEvent === 'undefined') {
   global.DragEvent = class {
@@ -281,29 +301,29 @@ describe('Drop Functionality', () => {
   });
 
   it('should handle dragover correctly', () => {
-    const mockDataTransfer = {
-      dropEffect: ''
-    };
+    const svg = element.svg; // Target element
     const dragOverEvent = new DragEvent('dragover', {
       bubbles: true,
       cancelable: true,
-      dataTransfer: mockDataTransfer
+      dataTransfer: new DataTransfer() // Use the mock
     });
+    // preventDefault is checked by the defaultPrevented property directly
+    // vi.spyOn(dragOverEvent, 'preventDefault'); // No longer needed
 
-    element.svg.dispatchEvent(dragOverEvent);
+    svg.dispatchEvent(dragOverEvent);
 
-    expect(dragOverEvent.defaultPrevented).toBe(true);
-    expect(mockDataTransfer.dropEffect).toBe('copy');
+    expect(dragOverEvent.defaultPrevented).toBe(true); // Check if preventDefault was called
+    expect(dragOverEvent.dataTransfer.dropEffect).toBe('copy');
   });
 
   it('should handle drop correctly and place symbol with default pan/zoom', () => {
+    const svg = element.svg; // Target element
     const clientX = 100;
     const clientY = 50;
-    const mockGetData = vi.fn().mockReturnValue(JSON.stringify(mockSymbolData));
-    const mockDataTransfer = {
-      getData: mockGetData,
-      dropEffect: '' // Not strictly needed for drop, but part of interface
-    };
+
+    const mockDataTransfer = new DataTransfer(); // Use the mock
+    mockDataTransfer.setData('application/json', JSON.stringify(mockSymbolData));
+    // vi.spyOn(mockDataTransfer, 'getData'); // Not spying, will check outcome
 
     const dropEvent = new DragEvent('drop', {
       bubbles: true,
@@ -312,11 +332,14 @@ describe('Drop Functionality', () => {
       clientY: clientY,
       dataTransfer: mockDataTransfer
     });
+    // vi.spyOn(dropEvent, 'preventDefault'); // Not needed, defaultPrevented is checked
 
-    element.svg.dispatchEvent(dropEvent);
+    svg.dispatchEvent(dropEvent);
 
     expect(dropEvent.defaultPrevented).toBe(true);
-    expect(mockGetData).toHaveBeenCalledWith('application/json');
+    // The explicit check for mockGetData.toHaveBeenCalledWith('application/json')
+    // is removed because mockGetData was part of a simple object mock.
+    // The successful addition of the symbol implicitly tests getData.
 
     const addedSymbolGroup = element.g.lastChild;
     expect(addedSymbolGroup).not.toBeNull();
@@ -340,18 +363,18 @@ describe('Drop Functionality', () => {
   });
 
   it('should handle drop correctly and place symbol with custom pan/zoom', () => {
+    const svg = element.svg; // Target element
     // Set custom pan/zoom
     element.currentX = 50;
     element.currentY = 20;
     element.currentScale = 0.5;
-    element.updateTransform(); // Ensure the main group's transform is updated if necessary for logic (though not directly used in calc here)
+    element.updateTransform();
 
     const clientX = 150;
     const clientY = 100;
-    const mockGetData = vi.fn().mockReturnValue(JSON.stringify(mockSymbolData));
-    const mockDataTransfer = {
-      getData: mockGetData
-    };
+
+    const mockDataTransfer = new DataTransfer(); // Use the mock
+    mockDataTransfer.setData('application/json', JSON.stringify(mockSymbolData));
 
     const dropEvent = new DragEvent('drop', {
       bubbles: true,
@@ -360,11 +383,12 @@ describe('Drop Functionality', () => {
       clientY: clientY,
       dataTransfer: mockDataTransfer
     });
+    // vi.spyOn(dropEvent, 'preventDefault'); // Not needed
 
-    element.svg.dispatchEvent(dropEvent);
+    svg.dispatchEvent(dropEvent);
 
     expect(dropEvent.defaultPrevented).toBe(true);
-    expect(mockGetData).toHaveBeenCalledWith('application/json');
+    // `getData` call is implicitly tested by successful symbol placement.
 
     const addedSymbolGroup = element.g.lastChild;
     expect(addedSymbolGroup).not.toBeNull();
