@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import SymbolLibrary from './symbol-library.js';
 
 describe('SymbolLibrary Component', () => {
@@ -15,7 +15,11 @@ describe('SymbolLibrary Component', () => {
   beforeEach(() => {
     container = document.createElement('div');
     document.body.appendChild(container);
-    element = new SymbolLibrary();
+    // Ensure the custom element is defined for each test context
+    if (!customElements.get('symbol-library')) {
+      customElements.define('symbol-library', SymbolLibrary);
+    }
+    element = document.createElement('symbol-library');
     container.appendChild(element);
   });
 
@@ -109,5 +113,72 @@ describe('SymbolLibrary Component', () => {
     expect(Ctor).toBeDefined();
     expect(Ctor).toBe(SymbolLibrary);
     expect(el).toBeInstanceOf(Ctor);
+  });
+});
+
+describe('SymbolLibrary Drag Functionality', () => {
+  let element;
+  let container;
+
+  beforeEach(() => {
+    container = document.createElement('div');
+    document.body.appendChild(container);
+    // Ensure the custom element is defined for each test context
+    if (!customElements.get('symbol-library')) {
+      customElements.define('symbol-library', SymbolLibrary);
+    }
+    element = document.createElement('symbol-library');
+    container.appendChild(element);
+  });
+
+  afterEach(() => {
+    if (element && element.parentNode) {
+      element.parentNode.removeChild(element);
+    }
+    if (container && container.parentNode) {
+      container.parentNode.removeChild(container);
+    }
+    element = null;
+    container = null;
+  });
+
+  it('should have draggable="true" attribute on symbol list items', () => {
+    const liElements = element.querySelectorAll('ul.symbol-list li');
+    expect(liElements.length).toBeGreaterThan(0); // Make sure there are items
+    liElements.forEach(li => {
+      expect(li.getAttribute('draggable')).toBe('true');
+    });
+  });
+
+  it('should handle dragstart event correctly and set dataTransfer', () => {
+    const symbolListItem = element.querySelector('ul.symbol-list li');
+    expect(symbolListItem).not.toBeNull();
+
+    const mockSetData = vi.fn();
+    const mockDataTransfer = {
+      setData: mockSetData,
+      effectAllowed: '' // To check if it's set
+    };
+
+    // The component instance `element` has the `symbols` array.
+    const symbolName = symbolListItem.dataset.symbolName;
+    const expectedSymbolData = element.symbols.find(s => s.name === symbolName);
+    expect(expectedSymbolData).toBeDefined();
+
+    const dragEvent = new DragEvent('dragstart', {
+      bubbles: true,
+      cancelable: true,
+      dataTransfer: mockDataTransfer
+    });
+
+    symbolListItem.dispatchEvent(dragEvent);
+
+    expect(mockSetData).toHaveBeenCalledTimes(1);
+    expect(mockSetData).toHaveBeenCalledWith(
+      'application/json',
+      JSON.stringify({ name: expectedSymbolData.name, svg: expectedSymbolData.svg })
+    );
+
+    expect(mockDataTransfer.effectAllowed).toBe('copy');
   });
 });

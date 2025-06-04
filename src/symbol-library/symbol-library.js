@@ -21,7 +21,7 @@ class SymbolLibrary extends BaseComponent {
 
   connectedCallback() {
     const symbolListItems = this.symbols.map(symbol => `
-      <li data-symbol-name="${symbol.name}">
+      <li data-symbol-name="${symbol.name}" draggable="true">
         ${symbol.svg}
       </li>
     `).join('');
@@ -74,6 +74,19 @@ class SymbolLibrary extends BaseComponent {
         ${symbolListItems}
       </ul>
     `;
+
+    this.querySelectorAll('ul.symbol-list li').forEach(item => {
+      item.addEventListener('dragstart', event => {
+        const symbolName = event.currentTarget.dataset.symbolName;
+        const symbol = this.symbols.find(s => s.name === symbolName);
+        if (symbol) {
+          event.dataTransfer.setData('application/json', JSON.stringify({ name: symbol.name, svg: symbol.svg }));
+          event.dataTransfer.effectAllowed = 'copy';
+        } else {
+          console.error('Symbol not found for dragstart:', symbolName);
+        }
+      });
+    });
   }
 }
 

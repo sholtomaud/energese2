@@ -47,7 +47,46 @@ class CanvasWorkspace extends BaseComponent {
     this.svg.addEventListener('mouseleave', this.handleMouseUp.bind(this)); // Reset panning if mouse leaves canvas
     this.svg.addEventListener('wheel', this.handleWheel.bind(this));
 
+    // Add drag and drop listeners
+    this.svg.addEventListener('dragover', this.handleDragOver.bind(this));
+    this.svg.addEventListener('drop', this.handleDrop.bind(this));
+
     console.log('canvas-workspace connected');
+  }
+
+  handleDragOver(event) {
+    event.preventDefault(); // Allow drop
+    event.dataTransfer.dropEffect = 'copy';
+  }
+
+  handleDrop(event) {
+    event.preventDefault();
+    const data = event.dataTransfer.getData('application/json');
+    if (!data) {
+      console.error('No data transferred on drop.');
+      return;
+    }
+
+    try {
+      const symbolData = JSON.parse(data);
+      console.log('Dropped symbol data:', symbolData);
+
+      const newSymbolGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+      newSymbolGroup.innerHTML = symbolData.svg; // Potentially unsafe if SVG content is not controlled
+
+      const svgRect = this.svg.getBoundingClientRect();
+      // Convert client coordinates to SVG coordinates
+      const svgX = (event.clientX - svgRect.left - this.currentX) / this.currentScale;
+      const svgY = (event.clientY - svgRect.top - this.currentY) / this.currentScale;
+
+      newSymbolGroup.setAttribute('transform', `translate(${svgX}, ${svgY})`);
+      this.g.appendChild(newSymbolGroup);
+
+      console.log(`Symbol "${symbolData.name}" dropped at SVG coordinates: (${svgX}, ${svgY})`);
+
+    } catch (error) {
+      console.error('Failed to parse or handle dropped symbol data:', error);
+    }
   }
 
   handleMouseDown(event) {
