@@ -19,6 +19,7 @@ if (typeof DataTransfer === 'undefined') {
 }
 
 // Add this at the start of the test file
+
 // Enhanced condition to re-mock if current DragEvent is faulty for tests (e.g. missing preventDefault)
 if (typeof DragEvent === 'undefined' || (typeof DragEvent !== 'undefined' && !new DragEvent('dragstart').preventDefault)) {
   global.DragEvent = class DragEvent extends Event { // EXTEND Event
@@ -32,6 +33,7 @@ if (typeof DragEvent === 'undefined' || (typeof DragEvent !== 'undefined' && !ne
     }
     // preventDefault is inherited from Event if options.cancelable is true during instantiation.
     // No need to define it here if Event base class handles it.
+
   };
 }
 
@@ -255,7 +257,82 @@ describe('CanvasWorkspace Component', () => {
       expect(values[0]).toBeCloseTo(60, 2);
       expect(values[1]).toBeCloseTo(30, 2);
       expect(values[2]).toBeCloseTo(1.1, 2);
+
     });
+    // vi.spyOn(dropEvent, 'preventDefault'); // Not needed, defaultPrevented is checked
+
+    svg.dispatchEvent(dropEvent);
+
+    expect(dropEvent.defaultPrevented).toBe(true);
+    // The explicit check for mockGetData.toHaveBeenCalledWith('application/json')
+    // is removed because mockGetData was part of a simple object mock.
+    // The successful addition of the symbol implicitly tests getData.
+
+    const addedSymbolGroup = element.g.lastChild;
+    expect(addedSymbolGroup).not.toBeNull();
+    expect(addedSymbolGroup.tagName.toLowerCase()).toBe('g');
+    // Note: innerHTML of an SVG element might be cased differently by the parser or serialized differently.
+    // It's safer to check for structural elements or specific attributes if possible.
+    // For this case, if the SVG string is simple and controlled, direct match might be okay.
+    // AFTER THE FIX: addedSymbolGroup.innerHTML will be the *content* of the mockSymbolData.svg, not the full string.
+    const parser = new DOMParser();
+    const svgDoc = parser.parseFromString(mockSymbolData.svg, "image/svg+xml");
+    const expectedInnerSvg = svgDoc.documentElement.innerHTML;
+    expect(addedSymbolGroup.innerHTML).toBe(expectedInnerSvg);
+
+    const expectedSvgX = (clientX - mockBoundingClientRect.left - element.currentX) / element.currentScale;
+    const expectedSvgY = (clientY - mockBoundingClientRect.top - element.currentY) / element.currentScale;
+
+    const transformString = addedSymbolGroup.getAttribute('transform');
+    const values = transformString.match(/-?\d+(\.\d+)?/g).map(Number);
+    expect(values[0]).toBeCloseTo(expectedSvgX, 2);
+    expect(values[1]).toBeCloseTo(expectedSvgY, 2);
+  });
+
+  it('should handle drop correctly and place symbol with custom pan/zoom', () => {
+    const svg = element.svg; // Target element
+    // Set custom pan/zoom
+    element.currentX = 50;
+    element.currentY = 20;
+    element.currentScale = 0.5;
+    element.updateTransform();
+
+    const clientX = 150;
+    const clientY = 100;
+
+    const mockDataTransfer = new DataTransfer(); // Use the mock
+    mockDataTransfer.setData('application/json', JSON.stringify(mockSymbolData));
+
+    const dropEvent = new DragEvent('drop', {
+      bubbles: true,
+      cancelable: true,
+      clientX: clientX,
+      clientY: clientY,
+      dataTransfer: mockDataTransfer
+    });
+    // vi.spyOn(dropEvent, 'preventDefault'); // Not needed
+
+    svg.dispatchEvent(dropEvent);
+
+    expect(dropEvent.defaultPrevented).toBe(true);
+    // `getData` call is implicitly tested by successful symbol placement.
+
+    const addedSymbolGroup = element.g.lastChild;
+    expect(addedSymbolGroup).not.toBeNull();
+    expect(addedSymbolGroup.tagName.toLowerCase()).toBe('g');
+    // AFTER THE FIX: addedSymbolGroup.innerHTML will be the *content* of the mockSymbolData.svg, not the full string.
+    const parser = new DOMParser();
+    const svgDoc = parser.parseFromString(mockSymbolData.svg, "image/svg+xml");
+    const expectedInnerSvg = svgDoc.documentElement.innerHTML;
+    expect(addedSymbolGroup.innerHTML).toBe(expectedInnerSvg);
+
+    const expectedSvgX = (clientX - mockBoundingClientRect.left - element.currentX) / element.currentScale;
+    const expectedSvgY = (clientY - mockBoundingClientRect.top - element.currentY) / element.currentScale;
+
+    const transformString = addedSymbolGroup.getAttribute('transform');
+    const values = transformString.match(/-?\d+(\.\d+)?/g).map(Number);
+    expect(values[0]).toBeCloseTo(expectedSvgX, 2);
+    expect(values[1]).toBeCloseTo(expectedSvgY, 2);
   });
 });
 
