@@ -160,8 +160,8 @@ Key commands:
 - [ ] **Task 1.6**: Set up event handling system for component communication
 
 ### Phase 2: Symbol System (Weeks 3-4)
-- [x] **Task 2.1**: Create symbol-library Web Component (placeholder implemented)
-- [ ] **Task 2.2**: Design and implement Odum symbol SVG library
+- [x] **Task 2.1**: Create symbol-library Web Component (initial SVG symbols implemented)
+- [x] **Task 2.2**: Design and implement Odum symbol SVG library (initial set of 3 symbols implemented)
 - [ ] **Task 2.3**: Build stencil-palette component with drag initiation
 - [ ] **Task 2.4**: Implement drag-and-drop system for symbol placement
 - [ ] **Task 2.5**: Create symbol instance management (select, move, delete)

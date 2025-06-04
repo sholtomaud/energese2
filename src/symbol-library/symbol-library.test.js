@@ -5,22 +5,24 @@ describe('SymbolLibrary Component', () => {
   let element;
   let container; // To append the element to, and clean up
 
+  // Expected symbols data - this should match the component's internal data for verification
+  const expectedSymbols = [
+    { name: 'Source', svgIdentifier: 'circle cx="50" cy="50" r="40"' , fill: 'lightgreen' },
+    { name: 'Storage', svgIdentifier: 'rect x="10" y="10" width="100" height="60"', fill: 'lightblue' },
+    { name: 'Producer', svgIdentifier: 'path d="M70 10 H10 V70 H70 L100 40 Z"', fill: 'yellow' }
+  ];
+
   beforeEach(() => {
-    // Create a container and append it to the body
     container = document.createElement('div');
     document.body.appendChild(container);
-
-    // Create the element and append it to the container
     element = new SymbolLibrary();
     container.appendChild(element);
   });
 
   afterEach(() => {
-    // Remove the element from its container
     if (element && element.parentNode) {
       element.parentNode.removeChild(element);
     }
-    // Remove the container from the body
     if (container && container.parentNode) {
       container.parentNode.removeChild(container);
     }
@@ -28,47 +30,81 @@ describe('SymbolLibrary Component', () => {
     container = null;
   });
 
-  it('should render a list of symbols', () => {
-    // Check for the presence of <ul>
-    expect(element.innerHTML).toContain('<ul class="symbol-list">');
-
-    // Check for the presence of <li> tags
-    expect(element.innerHTML).toContain('<li>');
-
-    // Check for placeholder symbols
-    expect(element.innerHTML).toContain('Placeholder Symbol 1');
-    expect(element.innerHTML).toContain('Placeholder Symbol 2');
-
-    // Check specific structure if necessary
+  it('should render a list of SVG symbols', () => {
     const ulElement = element.querySelector('ul.symbol-list');
     expect(ulElement).not.toBeNull();
-    if (ulElement) { // Check to satisfy TypeScript/linker if it were enabled
-        expect(ulElement.children.length).toBe(2);
-        expect(ulElement.children[0].textContent.trim()).toBe('Placeholder Symbol 1');
-        expect(ulElement.children[1].textContent.trim()).toBe('Placeholder Symbol 2');
-    }
+
+    const liElements = ulElement.querySelectorAll('li');
+    expect(liElements.length).toBe(expectedSymbols.length);
+
+    liElements.forEach((li, index) => {
+      const expectedSymbol = expectedSymbols[index];
+
+      // Check dataset attribute
+      expect(li.dataset.symbolName).toBe(expectedSymbol.name);
+
+      // Check for SVG presence
+      const svgElement = li.querySelector('svg');
+      expect(svgElement).not.toBeNull();
+
+      // Check for some unique part of the SVG structure or attributes
+      // This makes the test more robust than checking the entire SVG string
+      expect(svgElement.innerHTML).toContain(expectedSymbol.svgIdentifier);
+
+      // Optionally, check fill color of a primary element if applicable and easily selectable
+      const primaryShape = svgElement.querySelector('[fill]'); // Get the first element with a fill
+      if (primaryShape) {
+        expect(primaryShape.getAttribute('fill')).toBe(expectedSymbol.fill);
+      }
+
+      // Check for the text element inside SVG (if applicable, like in these examples)
+      const textElement = svgElement.querySelector('text');
+      expect(textElement).not.toBeNull();
+      if (textElement) {
+        expect(textElement.textContent).toBe(expectedSymbol.name);
+      }
+    });
   });
 
-  it('should have basic styling applied for the list', () => {
-    expect(element.innerHTML).toContain('<style>');
-    // More specific checks for style content
+  it('should have appropriate styling for the symbol list and items', () => {
     const styleTag = element.querySelector('style');
     expect(styleTag).not.toBeNull();
+
     if (styleTag) {
-        expect(styleTag.textContent).toContain('list-style-type: none;');
-        expect(styleTag.textContent).toContain('ul.symbol-list');
-        expect(styleTag.textContent).toContain('padding: 0;');
-        expect(styleTag.textContent).toContain('margin: 0;');
-        expect(styleTag.textContent).toContain('background-color: #f0f0f0;');
-        expect(styleTag.textContent).toContain('border: 1px solid #ccc;');
+      const styles = styleTag.textContent;
+      // General styles from previous implementation
+      expect(styles).toContain('ul.symbol-list {');
+      expect(styles).toContain('list-style-type: none;');
+      expect(styles).toContain('padding: 0;');
+      expect(styles).toContain('margin: 0;');
+
+      // Styles for list items
+      expect(styles).toContain('ul.symbol-list li {');
+      expect(styles).toContain('cursor: grab;');
+      expect(styles).toContain('border: 1px solid #eee;'); // Updated border
+      expect(styles).toContain('background-color: #f9f9f9;'); // Updated background
+
+      // Flex styles for layout
+      expect(styles).toContain('display: flex;');
+      expect(styles).toContain('flex-wrap: wrap;');
+      expect(styles).toContain('justify-content: center;'); // For ul
+      expect(styles).toContain('align-items: center;'); // For li
+
+      // SVG specific styles
+      expect(styles).toContain('ul.symbol-list li svg {');
+      expect(styles).toContain('display: block;');
+      expect(styles).toContain('margin: 0 auto;');
+
+      // Host and H2 styles
+      expect(styles).toContain(':host {');
+      expect(styles).toContain('h2 {');
     }
   });
 
   it('should be registered as a custom element', () => {
     const el = document.createElement('symbol-library');
-    expect(el).toBeInstanceOf(SymbolLibrary); // Check instance type
+    expect(el).toBeInstanceOf(SymbolLibrary);
 
-    // Or check via customElements.get
     const Ctor = customElements.get('symbol-library');
     expect(Ctor).toBeDefined();
     expect(Ctor).toBe(SymbolLibrary);
