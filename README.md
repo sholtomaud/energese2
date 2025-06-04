@@ -87,6 +87,15 @@ A standalone, offline-capable web application for creating and simulating dynami
 - **Status bar** - Current mode, cursor position, zoom level
 - **Context menus** - Right-click actions for canvas and elements
 
+## Development Environment
+This project uses [Vite.js](https://vitejs.dev/) for its development server and build processes, providing a fast and modern development experience. For testing, we use [Vitest](https://vitest.dev/), a Vite-native testing framework.
+
+All new features, components, or significant code changes must be accompanied by unit tests to ensure code quality and maintainability.
+
+Key commands:
+- To start the development server: `npm run dev`
+- To run tests: `npm test`
+
 ## Technical Architecture
 
 ### Web Components Structure

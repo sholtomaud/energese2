@@ -1,0 +1,6 @@
+/*
+  Basic styles for app-shell component.
+  Currently, the primary styles are embedded directly within app-shell.js
+  for encapsulation without Shadow DOM. This file is created to align with
+  the project structure but might be used more extensively if styles are externalized.
+*/
