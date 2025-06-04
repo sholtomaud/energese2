@@ -1,3 +1,18 @@
+// Mock DragEvent at the start of the test file
+if (typeof DragEvent === 'undefined') {
+  global.DragEvent = class {
+    constructor(type, options) {
+      this.type = type;
+      this.bubbles = options.bubbles || false;
+      this.cancelable = options.cancelable || false;
+      this.dataTransfer = options.dataTransfer || null;
+    }
+    // Note: preventDefault and clientX/Y are not included here as per user feedback for this specific file,
+    // but if any test in symbol-library starts using them, they might need to be added.
+    // For now, sticking to the minimal mock provided for this file.
+  };
+}
+
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import SymbolLibrary from './symbol-library.js';
 
