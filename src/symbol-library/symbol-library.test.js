@@ -15,7 +15,7 @@ if (typeof DataTransfer === 'undefined') {
   };
 }
 
-
+// Mock DragEvent at the start of the test file
 // Enhanced condition to re-mock if current DragEvent is faulty for tests
 if (typeof DragEvent === 'undefined' || (typeof DragEvent !== 'undefined' && !new DragEvent('dragstart').preventDefault)) {
   global.DragEvent = class DragEvent extends Event { // EXTEND Event
@@ -25,7 +25,6 @@ if (typeof DragEvent === 'undefined' || (typeof DragEvent !== 'undefined' && !ne
       // clientX, clientY not strictly needed by this file's tests currently, inherited if needed from Event options
     }
     // preventDefault is inherited from Event if options.cancelable is true
-
   };
 }
 
