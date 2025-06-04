@@ -65,9 +65,8 @@ class AppShell extends BaseComponent {
           <symbol-library></symbol-library>
         </nav>
         <main>
-          <p>Main application content will go here. The canvas-workspace will eventually replace this.</p>
           <!-- Placeholder for canvas-workspace -->
-          <!-- <canvas-workspace></canvas-workspace> -->
+          <canvas-workspace></canvas-workspace>
         </main>
       </div>
       <footer>
