@@ -19,20 +19,19 @@ if (typeof DataTransfer === 'undefined') {
 }
 
 // Add this at the start of the test file
-if (typeof DragEvent === 'undefined') {
-  global.DragEvent = class {
-    constructor(type, options) {
-      this.type = type;
-      this.bubbles = options.bubbles || false;
-      this.cancelable = options.cancelable || false;
+// Enhanced condition to re-mock if current DragEvent is faulty for tests (e.g. missing preventDefault)
+if (typeof DragEvent === 'undefined' || (typeof DragEvent !== 'undefined' && !new DragEvent('dragstart').preventDefault)) {
+  global.DragEvent = class DragEvent extends Event { // EXTEND Event
+    constructor(type, options = {}) { // Add default for options
+      super(type, options); // CALL super()
       this.dataTransfer = options.dataTransfer || null;
       this.clientX = options.clientX || 0;
       this.clientY = options.clientY || 0;
-      this.defaultPrevented = false;
+      // Note: defaultPrevented is handled by the base Event class when super is called with cancelable:true
+      // No need to manually manage this.defaultPrevented if super() is correctly called with options.cancelable
     }
-    preventDefault() {
-      this.defaultPrevented = true;
-    }
+    // preventDefault is inherited from Event if options.cancelable is true during instantiation.
+    // No need to define it here if Event base class handles it.
   };
 }
 
@@ -270,18 +269,20 @@ describe('Drop Functionality', () => {
   beforeEach(() => {
     container = document.createElement('div');
     document.body.appendChild(container);
+    element = new CanvasWorkspace();
+    container.appendChild(element); // This appendChild is expected to trigger connectedCallback
 
-    // Ensure the custom element is defined (though CanvasWorkspace might not need it explicitly if always new'd)
-    if (!customElements.get('canvas-workspace')) {
-        customElements.define('canvas-workspace', CanvasWorkspace);
-    }
-    element = new CanvasWorkspace(); // Creates instance
-    container.appendChild(element); // Appends to DOM, which calls connectedCallback implicitly if it's a custom element standard lifecycle
-    // However, the original tests call connectedCallback explicitly, so we might keep that if issues arise.
-    // For now, assuming standard custom element behavior where appendChild triggers connectedCallback.
-    // If element.svg is null, then explicit call to element.connectedCallback() is needed.
+    // After appendChild, element.svg should be initialized by the component's connectedCallback.
+    // If it's not, then there's an issue with the component's lifecycle or test environment.
     if (!element.svg) {
-      element.connectedCallback(); // Ensure SVG and g are created.
+      // Attempt to call connectedCallback explicitly if svg is missing,
+      // though this might indicate a deeper issue or test env quirk.
+      console.warn('[Test Setup] element.svg was not initialized after appendChild, calling connectedCallback() explicitly.');
+      element.connectedCallback();
+      // If still not present, then it's a critical failure.
+      if (!element.svg) {
+        throw new Error('CanvasWorkspace element.svg is still not initialized even after explicit connectedCallback() in test setup for Drop Functionality.');
+      }
     }
 
     // Mock getBoundingClientRect for the SVG element

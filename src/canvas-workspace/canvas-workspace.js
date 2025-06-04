@@ -18,7 +18,8 @@ class CanvasWorkspace extends BaseComponent {
     this.svg.style.backgroundColor = '#f0f0f0';
 
     this.g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
-    this.g.setAttribute('transform', `translate(${this.currentX}, ${this.currentY})`);
+    // this.g.setAttribute('transform', `translate(${this.currentX}, ${this.currentY})`); // Old way
+    this.updateTransform(); // Set initial transform using the method that includes scale
     this.svg.appendChild(this.g);
 
     // Add some sample content to the group

@@ -41,6 +41,7 @@ describe('AppShell Component', () => {
     expect(footer).not.toBeNull();
     const pElement = footer.querySelector('p#route-info'); // Specific p element
     expect(pElement).not.toBeNull();
-    expect(pElement.textContent).toContain('Status: Ready'); // Updated footer text check
+    // This text is set by handleRouteChange() called during connectedCallback
+    expect(pElement.textContent).toContain('Current Route: # (default)');
   });
 });

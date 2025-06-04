@@ -16,17 +16,15 @@ if (typeof DataTransfer === 'undefined') {
 }
 
 // Mock DragEvent at the start of the test file
-if (typeof DragEvent === 'undefined') {
-  global.DragEvent = class {
-    constructor(type, options) {
-      this.type = type;
-      this.bubbles = options.bubbles || false;
-      this.cancelable = options.cancelable || false;
+// Enhanced condition to re-mock if current DragEvent is faulty for tests
+if (typeof DragEvent === 'undefined' || (typeof DragEvent !== 'undefined' && !new DragEvent('dragstart').preventDefault)) {
+  global.DragEvent = class DragEvent extends Event { // EXTEND Event
+    constructor(type, options = {}) { // Add default for options
+      super(type, options); // CALL super()
       this.dataTransfer = options.dataTransfer || null;
+      // clientX, clientY not strictly needed by this file's tests currently, inherited if needed from Event options
     }
-    // Note: preventDefault and clientX/Y are not included here as per user feedback for this specific file,
-    // but if any test in symbol-library starts using them, they might need to be added.
-    // For now, sticking to the minimal mock provided for this file.
+    // preventDefault is inherited from Event if options.cancelable is true
   };
 }
 
