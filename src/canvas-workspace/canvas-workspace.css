@@ -1,2 +1,11 @@
 /* Styles for canvas-workspace component */
-/* Initially empty as styles are embedded in JS for encapsulation */
+canvas-workspace {
+    display: block; /* Or flex, depending on its internal needs, block is fine for now */
+    width: 100%;
+    height: 100%;
+    overflow: hidden; /* Should not show scrollbars, canvas handles its own pan/zoom */
+}
+
+/* The actual SVG inside canvas-workspace is manipulated by its JS,
+   but we ensure the host component fills space. */
+/* Its background color is set in its JS: this.svg.style.backgroundColor = '#f0f0f0'; */

@@ -1,4 +1,41 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+// Mock DataTransfer if not available
+if (typeof DataTransfer === 'undefined') {
+  global.DataTransfer = class {
+    constructor() {
+      this.data = {};
+      this.dropEffect = 'none'; // Common default
+      this.effectAllowed = 'all'; // Common default
+    }
+    setData(format, data) {
+      this.data[format] = data;
+    }
+    getData(format) {
+      return this.data[format];
+    }
+    // Add other common DataTransfer properties/methods if needed by tests
+    // clearData() { this.data = {}; }
+    // setDragImage() {} // Often a no-op in mocks
+  };
+}
+
+// Add this at the start of the test file
+// Enhanced condition to re-mock if current DragEvent is faulty for tests (e.g. missing preventDefault)
+if (typeof DragEvent === 'undefined' || (typeof DragEvent !== 'undefined' && !new DragEvent('dragstart').preventDefault)) {
+  global.DragEvent = class DragEvent extends Event { // EXTEND Event
+    constructor(type, options = {}) { // Add default for options
+      super(type, options); // CALL super()
+      this.dataTransfer = options.dataTransfer || null;
+      this.clientX = options.clientX || 0;
+      this.clientY = options.clientY || 0;
+      // Note: defaultPrevented is handled by the base Event class when super is called with cancelable:true
+      // No need to manually manage this.defaultPrevented if super() is correctly called with options.cancelable
+    }
+    // preventDefault is inherited from Event if options.cancelable is true during instantiation.
+    // No need to define it here if Event base class handles it.
+  };
+}
+
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'; // Added vi
 import CanvasWorkspace from './canvas-workspace.js';
 
 describe('CanvasWorkspace Component', () => {
@@ -69,7 +106,11 @@ describe('CanvasWorkspace Component', () => {
   });
 
   it('should initialize with default transform values', () => {
-    expect(element.g.getAttribute('transform')).toBe('translate(0, 0) scale(1)');
+    const transformString = element.g.getAttribute('transform');
+    const values = transformString.match(/-?\d+(\.\d+)?/g).map(Number);
+    expect(values[0]).toBeCloseTo(0, 2); // translateX
+    expect(values[1]).toBeCloseTo(0, 2); // translateY
+    expect(values[2]).toBeCloseTo(1, 2); // scale
   });
 
   describe('Pan Functionality', () => {
@@ -86,13 +127,20 @@ describe('CanvasWorkspace Component', () => {
 
       // Move mouse
       dispatchMouseEvent(svg, 'mousemove', 150, 120);
-      // currentX = 150 - 100 = 50; currentY = 120 - 100 = 20;
-      expect(element.g.getAttribute('transform')).toBe('translate(50, 20) scale(1)');
+      let transformString = element.g.getAttribute('transform');
+      let values = transformString.match(/-?\d+(\.\d+)?/g).map(Number);
+      expect(values[0]).toBeCloseTo(50, 2);
+      expect(values[1]).toBeCloseTo(20, 2);
+      expect(values[2]).toBeCloseTo(1, 2);
 
       // Move mouse again
       dispatchMouseEvent(svg, 'mousemove', 50, 80);
-      // currentX = 50 - 100 = -50; currentY = 80 - 100 = -20;
-      expect(element.g.getAttribute('transform')).toBe('translate(-50, -20) scale(1)');
+      transformString = element.g.getAttribute('transform');
+      values = transformString.match(/-?\d+(\.\d+)?/g).map(Number);
+      expect(values[0]).toBeCloseTo(-50, 2);
+      expect(values[1]).toBeCloseTo(-80 + 60, 2); // -20, example of calculation if needed
+      expect(values[2]).toBeCloseTo(1, 2);
+
 
       // Stop panning
       dispatchMouseEvent(svg, 'mouseup', 50, 80);
@@ -130,90 +178,232 @@ describe('CanvasWorkspace Component', () => {
       // currentY = 100 - (100 - 0) * 1.1 = 100 - 110 = -10
       dispatchWheelEvent(svg, -100, 100, 100); // deltaY < 0 for zoom in
       expect(element.currentScale).toBeCloseTo(1.1);
-      expect(element.currentX).toBeCloseTo(-10);
-      expect(element.currentY).toBeCloseTo(-10);
-      expect(element.g.getAttribute('transform')).toBe(`translate(-10, -10) scale(1.1)`);
+      expect(element.currentX).toBeCloseTo(-10, 2);
+      expect(element.currentY).toBeCloseTo(-10, 2);
+      let transformString = element.g.getAttribute('transform');
+      let values = transformString.match(/-?\d+(\.\d+)?/g).map(Number);
+      expect(values[0]).toBeCloseTo(-10, 2);
+      expect(values[1]).toBeCloseTo(-10, 2);
+      expect(values[2]).toBeCloseTo(1.1, 2);
 
       // Zoom in again at a different point (200,200)
-      // mouseX = 200, mouseY = 200
-      // currentX = -10, currentY = -10, currentScale = 1.1
-      // zoomFactor = 1.1
-      // newScale = 1.1 * 1.1 = 1.21
-      // currentX = 200 - (200 - (-10)) * 1.1 = 200 - (210) * 1.1 = 200 - 231 = -31
-      // currentY = 200 - (200 - (-10)) * 1.1 = 200 - (210) * 1.1 = 200 - 231 = -31
       dispatchWheelEvent(svg, -100, 200, 200);
-      expect(element.currentScale).toBeCloseTo(1.21);
-      expect(element.currentX).toBeCloseTo(-31);
-      expect(element.currentY).toBeCloseTo(-31);
-      expect(element.g.getAttribute('transform')).toBe(`translate(-31, -31) scale(1.21)`);
+      expect(element.currentScale).toBeCloseTo(1.21, 2);
+      expect(element.currentX).toBeCloseTo(-31, 2);
+      expect(element.currentY).toBeCloseTo(-31, 2);
+      transformString = element.g.getAttribute('transform');
+      values = transformString.match(/-?\d+(\.\d+)?/g).map(Number);
+      expect(values[0]).toBeCloseTo(-31, 2);
+      expect(values[1]).toBeCloseTo(-31, 2);
+      expect(values[2]).toBeCloseTo(1.21, 2);
     });
 
     it('should zoom out correctly, centered on mouse pointer', () => {
       const svg = element.svg;
-      // Initial state: translate(0,0) scale(1)
-
-      // Zoom out at (100,100)
-      // mouseX = 100, mouseY = 100
-      // currentX = 0, currentY = 0, currentScale = 1
-      // zoomFactor = 0.9
-      // newScale = 1 * 0.9 = 0.9
-      // currentX = 100 - (100 - 0) * 0.9 = 100 - 90 = 10
-      // currentY = 100 - (100 - 0) * 0.9 = 100 - 90 = 10
       dispatchWheelEvent(svg, 100, 100, 100); // deltaY > 0 for zoom out
-      expect(element.currentScale).toBeCloseTo(0.9);
-      expect(element.currentX).toBeCloseTo(10);
-      expect(element.currentY).toBeCloseTo(10);
-      expect(element.g.getAttribute('transform')).toBe(`translate(10, 10) scale(0.9)`);
+      expect(element.currentScale).toBeCloseTo(0.9, 2);
+      expect(element.currentX).toBeCloseTo(10, 2);
+      expect(element.currentY).toBeCloseTo(10, 2);
+      let transformString = element.g.getAttribute('transform');
+      let values = transformString.match(/-?\d+(\.\d+)?/g).map(Number);
+      expect(values[0]).toBeCloseTo(10, 2);
+      expect(values[1]).toBeCloseTo(10, 2);
+      expect(values[2]).toBeCloseTo(0.9, 2);
 
-      // Zoom out again at a different point (50,50)
-      // mouseX = 50, mouseY = 50
-      // currentX = 10, currentY = 10, currentScale = 0.9
-      // zoomFactor = 0.9
-      // newScale = 0.9 * 0.9 = 0.81
-      // currentX = 50 - (50 - 10) * 0.9 = 50 - (40) * 0.9 = 50 - 36 = 14
-      // currentY = 50 - (50 - 10) * 0.9 = 50 - (40) * 0.9 = 50 - 36 = 14
       dispatchWheelEvent(svg, 100, 50, 50);
-      expect(element.currentScale).toBeCloseTo(0.81);
-      expect(element.currentX).toBeCloseTo(14);
-      expect(element.currentY).toBeCloseTo(14);
-      // Due to potential floating point inaccuracies, it's better to check parts of the string or use toBeCloseTo for numerical values
-      const transform = element.g.getAttribute('transform');
-      expect(transform).toContain(`scale(0.81)`);
-      // For translate, parse the values if precision is an issue.
-      // Or ensure the component rounds or formats the output consistently.
-      // For now, direct string comparison with calculated values.
-      expect(transform).toBe(`translate(14, 14) scale(0.81)`);
+      expect(element.currentScale).toBeCloseTo(0.81, 2);
+      expect(element.currentX).toBeCloseTo(14, 2);
+      expect(element.currentY).toBeCloseTo(14, 2);
+      transformString = element.g.getAttribute('transform');
+      values = transformString.match(/-?\d+(\.\d+)?/g).map(Number);
+      expect(values[0]).toBeCloseTo(14, 2);
+      expect(values[1]).toBeCloseTo(14, 2);
+      expect(values[2]).toBeCloseTo(0.81, 2);
     });
 
     it('should handle mixed pan and zoom operations', () => {
       const svg = element.svg;
       // 1. Pan
       dispatchMouseEvent(svg, 'mousedown', 100, 100);
-      dispatchMouseEvent(svg, 'mousemove', 150, 130); // dx=50, dy=30. translate(50,30) scale(1)
+      dispatchMouseEvent(svg, 'mousemove', 150, 130);
       dispatchMouseEvent(svg, 'mouseup', 150, 130);
-      expect(element.g.getAttribute('transform')).toBe('translate(50, 30) scale(1)');
+      let transformString = element.g.getAttribute('transform');
+      let values = transformString.match(/-?\d+(\.\d+)?/g).map(Number);
+      expect(values[0]).toBeCloseTo(50, 2);
+      expect(values[1]).toBeCloseTo(30, 2);
+      expect(values[2]).toBeCloseTo(1, 2);
 
-      // 2. Zoom In at (150, 130) - this is relative to SVG, current element.currentX = 50, element.currentY = 30
-      // mouseX = 150, mouseY = 130
-      // currentX = 50, currentY = 30, currentScale = 1
-      // zoomFactor = 1.1
-      // newScale = 1.1
-      // nextX = 150 - (150 - 50) * 1.1 = 150 - 100 * 1.1 = 150 - 110 = 40
-      // nextY = 130 - (130 - 30) * 1.1 = 130 - 100 * 1.1 = 130 - 110 = 20
+      // 2. Zoom In
       dispatchWheelEvent(svg, -100, 150, 130);
-      expect(element.currentScale).toBeCloseTo(1.1);
-      expect(element.currentX).toBeCloseTo(40);
-      expect(element.currentY).toBeCloseTo(20);
-      expect(element.g.getAttribute('transform')).toBe(`translate(40, 20) scale(1.1)`);
+      expect(element.currentScale).toBeCloseTo(1.1, 2);
+      expect(element.currentX).toBeCloseTo(40, 2);
+      expect(element.currentY).toBeCloseTo(20, 2);
+      transformString = element.g.getAttribute('transform');
+      values = transformString.match(/-?\d+(\.\d+)?/g).map(Number);
+      expect(values[0]).toBeCloseTo(40, 2);
+      expect(values[1]).toBeCloseTo(20, 2);
+      expect(values[2]).toBeCloseTo(1.1, 2);
 
       // 3. Pan again
-      // currentX = 40, currentY = 20, currentScale = 1.1
-      dispatchMouseEvent(svg, 'mousedown', 100, 100); // startX = 100 - 40 = 60, startY = 100 - 20 = 80
-      dispatchMouseEvent(svg, 'mousemove', 120, 110); // nextX = 120 - 60 = 60, nextY = 110 - 80 = 30
+      dispatchMouseEvent(svg, 'mousedown', 100, 100);
+      dispatchMouseEvent(svg, 'mousemove', 120, 110);
       dispatchMouseEvent(svg, 'mouseup', 120, 110);
-      expect(element.currentX).toBeCloseTo(60);
-      expect(element.currentY).toBeCloseTo(30);
-      expect(element.g.getAttribute('transform')).toBe(`translate(60, 30) scale(1.1)`);
+      expect(element.currentX).toBeCloseTo(60, 2);
+      expect(element.currentY).toBeCloseTo(30, 2);
+      transformString = element.g.getAttribute('transform');
+      values = transformString.match(/-?\d+(\.\d+)?/g).map(Number);
+      expect(values[0]).toBeCloseTo(60, 2);
+      expect(values[1]).toBeCloseTo(30, 2);
+      expect(values[2]).toBeCloseTo(1.1, 2);
     });
+  });
+});
+
+describe('Drop Functionality', () => {
+  let element;
+  let container;
+  const mockSymbolSvg = '<circle cx="10" cy="10" r="5" fill="blue" />';
+  const mockSymbolData = { name: 'TestSymbol', svg: mockSymbolSvg };
+  const mockBoundingClientRect = { left: 0, top: 0, width: 800, height: 600, right: 800, bottom: 600, x: 0, y: 0 };
+
+  beforeEach(() => {
+    container = document.createElement('div');
+    document.body.appendChild(container);
+
+    // Ensure the custom element is defined (though CanvasWorkspace might not need it explicitly if always new'd)
+    if (!customElements.get('canvas-workspace')) {
+        customElements.define('canvas-workspace', CanvasWorkspace);
+    }
+    element = new CanvasWorkspace(); // Creates instance
+    container.appendChild(element); // Appends to DOM, which calls connectedCallback implicitly if it's a custom element standard lifecycle
+    // However, the original tests call connectedCallback explicitly, so we might keep that if issues arise.
+    // For now, assuming standard custom element behavior where appendChild triggers connectedCallback.
+    // If element.svg is null, then explicit call to element.connectedCallback() is needed.
+    if (!element.svg) {
+      element.connectedCallback(); // Ensure SVG and g are created.
+    }
+
+    // Mock getBoundingClientRect for the SVG element
+    element.svg.getBoundingClientRect = vi.fn(() => mockBoundingClientRect);
+  });
+
+  afterEach(() => {
+    if (element && element.parentNode) {
+      element.parentNode.removeChild(element);
+    }
+    if (container && container.parentNode) {
+      container.parentNode.removeChild(container);
+    }
+    element = null;
+    container = null;
+    vi.restoreAllMocks(); // Restore any mocks after each test
+  });
+
+  it('should handle dragover correctly', () => {
+    const svg = element.svg; // Target element
+    const dragOverEvent = new DragEvent('dragover', {
+      bubbles: true,
+      cancelable: true,
+      dataTransfer: new DataTransfer() // Use the mock
+    });
+    // preventDefault is checked by the defaultPrevented property directly
+    // vi.spyOn(dragOverEvent, 'preventDefault'); // No longer needed
+
+    svg.dispatchEvent(dragOverEvent);
+
+    expect(dragOverEvent.defaultPrevented).toBe(true); // Check if preventDefault was called
+    expect(dragOverEvent.dataTransfer.dropEffect).toBe('copy');
+  });
+
+  it('should handle drop correctly and place symbol with default pan/zoom', () => {
+    const svg = element.svg; // Target element
+    const clientX = 100;
+    const clientY = 50;
+
+    const mockDataTransfer = new DataTransfer(); // Use the mock
+    mockDataTransfer.setData('application/json', JSON.stringify(mockSymbolData));
+    // vi.spyOn(mockDataTransfer, 'getData'); // Not spying, will check outcome
+
+    const dropEvent = new DragEvent('drop', {
+      bubbles: true,
+      cancelable: true,
+      clientX: clientX,
+      clientY: clientY,
+      dataTransfer: mockDataTransfer
+    });
+    // vi.spyOn(dropEvent, 'preventDefault'); // Not needed, defaultPrevented is checked
+
+    svg.dispatchEvent(dropEvent);
+
+    expect(dropEvent.defaultPrevented).toBe(true);
+    // The explicit check for mockGetData.toHaveBeenCalledWith('application/json')
+    // is removed because mockGetData was part of a simple object mock.
+    // The successful addition of the symbol implicitly tests getData.
+
+    const addedSymbolGroup = element.g.lastChild;
+    expect(addedSymbolGroup).not.toBeNull();
+    expect(addedSymbolGroup.tagName.toLowerCase()).toBe('g');
+    // Note: innerHTML of an SVG element might be cased differently by the parser or serialized differently.
+    // It's safer to check for structural elements or specific attributes if possible.
+    // For this case, if the SVG string is simple and controlled, direct match might be okay.
+    // AFTER THE FIX: addedSymbolGroup.innerHTML will be the *content* of the mockSymbolData.svg, not the full string.
+    const parser = new DOMParser();
+    const svgDoc = parser.parseFromString(mockSymbolData.svg, "image/svg+xml");
+    const expectedInnerSvg = svgDoc.documentElement.innerHTML;
+    expect(addedSymbolGroup.innerHTML).toBe(expectedInnerSvg);
+
+    const expectedSvgX = (clientX - mockBoundingClientRect.left - element.currentX) / element.currentScale;
+    const expectedSvgY = (clientY - mockBoundingClientRect.top - element.currentY) / element.currentScale;
+
+    const transformString = addedSymbolGroup.getAttribute('transform');
+    const values = transformString.match(/-?\d+(\.\d+)?/g).map(Number);
+    expect(values[0]).toBeCloseTo(expectedSvgX, 2);
+    expect(values[1]).toBeCloseTo(expectedSvgY, 2);
+  });
+
+  it('should handle drop correctly and place symbol with custom pan/zoom', () => {
+    const svg = element.svg; // Target element
+    // Set custom pan/zoom
+    element.currentX = 50;
+    element.currentY = 20;
+    element.currentScale = 0.5;
+    element.updateTransform();
+
+    const clientX = 150;
+    const clientY = 100;
+
+    const mockDataTransfer = new DataTransfer(); // Use the mock
+    mockDataTransfer.setData('application/json', JSON.stringify(mockSymbolData));
+
+    const dropEvent = new DragEvent('drop', {
+      bubbles: true,
+      cancelable: true,
+      clientX: clientX,
+      clientY: clientY,
+      dataTransfer: mockDataTransfer
+    });
+    // vi.spyOn(dropEvent, 'preventDefault'); // Not needed
+
+    svg.dispatchEvent(dropEvent);
+
+    expect(dropEvent.defaultPrevented).toBe(true);
+    // `getData` call is implicitly tested by successful symbol placement.
+
+    const addedSymbolGroup = element.g.lastChild;
+    expect(addedSymbolGroup).not.toBeNull();
+    expect(addedSymbolGroup.tagName.toLowerCase()).toBe('g');
+    // AFTER THE FIX: addedSymbolGroup.innerHTML will be the *content* of the mockSymbolData.svg, not the full string.
+    const parser = new DOMParser();
+    const svgDoc = parser.parseFromString(mockSymbolData.svg, "image/svg+xml");
+    const expectedInnerSvg = svgDoc.documentElement.innerHTML;
+    expect(addedSymbolGroup.innerHTML).toBe(expectedInnerSvg);
+
+    const expectedSvgX = (clientX - mockBoundingClientRect.left - element.currentX) / element.currentScale;
+    const expectedSvgY = (clientY - mockBoundingClientRect.top - element.currentY) / element.currentScale;
+
+    const transformString = addedSymbolGroup.getAttribute('transform');
+    const values = transformString.match(/-?\d+(\.\d+)?/g).map(Number);
+    expect(values[0]).toBeCloseTo(expectedSvgX, 2);
+    expect(values[1]).toBeCloseTo(expectedSvgY, 2);
   });
 });

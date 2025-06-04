@@ -21,59 +21,92 @@ class SymbolLibrary extends BaseComponent {
 
   connectedCallback() {
     const symbolListItems = this.symbols.map(symbol => `
-      <li data-symbol-name="${symbol.name}">
+      <li data-symbol-name="${symbol.name}" draggable="true">
         ${symbol.svg}
       </li>
     `).join('');
 
     this.innerHTML = `
       <style>
-        :host { /* Style the component itself */
-          display: block;
-          border: 1px solid #ccc;
-          padding: 10px;
+        :host {
+          display: flex; /* Changed to flex */
+          flex-direction: column; /* Vertical layout for the component itself */
+          height: 100%; /* Fill the nav container */
+          box-sizing: border-box;
+          /* background-color: #E2E8F0; /* Already set by app-shell nav */
         }
         h2 {
-          margin-top: 0;
-          font-size: 1.2em;
-          text-align: center;
+          font-size: 1rem; /* Smaller title */
+          margin: 0;
+          padding: 0.75rem 1rem; /* Consistent padding */
+          text-align: left;
+          font-weight: 600;
+          color: #2D3748; /* Darker text for title */
+          border-bottom: 1px solid #CBD5E0; /* Separator */
+          flex-shrink: 0; /* Prevent shrinking */
         }
         ul.symbol-list {
           list-style-type: none;
-          padding: 0;
+          padding: 0.5rem; /* Padding around the list */
           margin: 0;
-          display: flex; /* Allow wrapping */
-          flex-wrap: wrap; /* Symbols wrap to next line */
-          justify-content: center; /* Center symbols if they don't fill the row */
+          display: flex;
+          flex-direction: column; /* Vertical list of symbols */
+          align-items: stretch; /* Stretch items to fill width */
+          flex-grow: 1; /* Take remaining vertical space */
+          overflow-y: auto; /* Scroll if too many symbols */
         }
         ul.symbol-list li {
-          padding: 5px;
-          margin: 5px; /* Provide some space around each symbol */
-          border: 1px solid #eee;
-          background-color: #f9f9f9;
+          padding: 0.5rem; /* Padding inside each item */
+          margin: 0.25rem 0; /* Margin between items */
+          border: 1px solid #CBD5E0; /* Softer border */
+          background-color: #F7FAFC; /* Light background for items */
+          border-radius: 4px; /* Rounded corners */
           cursor: grab;
-          display: flex; /* For aligning item content */
-          flex-direction: column; /* Stack SVG and optional name */
-          align-items: center; /* Center content */
-          text-align: center;
+          display: flex;
+          flex-direction: row; /* SVG and name (if any) in a row */
+          align-items: center;
+          text-align: left;
+          transition: background-color 0.2s ease-in-out;
+        }
+        ul.symbol-list li:hover {
+          background-color: #EDF2F7; /* Slightly different background on hover */
+          border-color: #A0AEC0;
         }
         ul.symbol-list li svg {
-          display: block; /* Remove extra space below SVG */
-          margin: 0 auto; /* Center SVG if it's smaller than li */
+          display: block;
+          margin-right: 0.5rem; /* Space between SVG and name (if shown) */
+          flex-shrink: 0; /* Prevent SVG from shrinking */
+          /* Max width/height can be added if SVGs are too large */
         }
-        /* You could add a class to show names if desired, e.g., by adding <span class="symbol-name">\${symbol.name}</span> */
+        /* Optional: Style for symbol names if they were added next to SVGs */
         /*
-        ul.symbol-list li .symbol-name {
-          font-size: 0.8em;
-          margin-top: 3px;
+        .symbol-name-label {
+          font-size: 0.875rem;
+          color: #4A5568;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
         }
         */
       </style>
-      <h2>Symbol Library</h2>
+      <h2>Symbols</h2> <!-- Changed title -->
       <ul class="symbol-list">
-        ${symbolListItems}
+        ${symbolListItems} <!-- Symbol names are part of SVG text for now -->
       </ul>
     `;
+
+    this.querySelectorAll('ul.symbol-list li').forEach(item => {
+      item.addEventListener('dragstart', event => {
+        const symbolName = event.currentTarget.dataset.symbolName;
+        const symbol = this.symbols.find(s => s.name === symbolName);
+        if (symbol) {
+          event.dataTransfer.setData('application/json', JSON.stringify({ name: symbol.name, svg: symbol.svg }));
+          event.dataTransfer.effectAllowed = 'copy';
+        } else {
+          console.error('Symbol not found for dragstart:', symbolName);
+        }
+      });
+    });
   }
 }
 

@@ -18,7 +18,8 @@ class CanvasWorkspace extends BaseComponent {
     this.svg.style.backgroundColor = '#f0f0f0';
 
     this.g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
-    this.g.setAttribute('transform', `translate(${this.currentX}, ${this.currentY})`);
+    // this.g.setAttribute('transform', `translate(${this.currentX}, ${this.currentY})`); // Old way
+    this.updateTransform(); // Set initial transform using the method that includes scale
     this.svg.appendChild(this.g);
 
     // Add some sample content to the group
@@ -47,7 +48,91 @@ class CanvasWorkspace extends BaseComponent {
     this.svg.addEventListener('mouseleave', this.handleMouseUp.bind(this)); // Reset panning if mouse leaves canvas
     this.svg.addEventListener('wheel', this.handleWheel.bind(this));
 
+    // Add drag and drop listeners
+    this.svg.addEventListener('dragover', this.handleDragOver.bind(this));
+    this.svg.addEventListener('drop', this.handleDrop.bind(this));
+
     console.log('canvas-workspace connected');
+  }
+
+  handleDragOver(event) {
+    // console.log('[CanvasWorkspace] handleDragOver triggered.');
+    event.preventDefault(); // Allow drop
+    event.dataTransfer.dropEffect = 'copy';
+    // console.log('[CanvasWorkspace] handleDragOver: default prevented, dropEffect set to copy.');
+  }
+
+  handleDrop(event) {
+    // console.log('[CanvasWorkspace] handleDrop triggered.');
+    event.preventDefault();
+    // console.log('[CanvasWorkspace] handleDrop: default prevented.');
+
+    const data = event.dataTransfer.getData('application/json');
+    // console.log('[CanvasWorkspace] handleDrop: received data string:', data);
+
+    if (!data) {
+      console.error('[CanvasWorkspace] handleDrop: No data transferred on drop.'); // Keep this error
+      return;
+    }
+
+    try {
+      const symbolData = JSON.parse(data);
+      // console.log('[CanvasWorkspace] handleDrop: parsed symbol data:', symbolData);
+
+      if (!symbolData || typeof symbolData.svg !== 'string') {
+        console.error('[CanvasWorkspace] handleDrop: Parsed data is invalid or missing SVG string.', symbolData); // Keep this error
+        return;
+      }
+      // console.log('[CanvasWorkspace] handleDrop: SVG content to be set:', symbolData.svg);
+
+      const newSymbolGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+      // console.log('[CanvasWorkspace] handleDrop: new <g> element created.');
+
+      // Security consideration:innerHTML with SVG can be risky if SVG source is not trusted.
+      // For this project, assuming SVG from symbol-library is safe.
+      // newSymbolGroup.innerHTML = symbolData.svg; // Old way
+
+      // New way: Parse the SVG string and append its content to the group.
+      // This avoids nesting an <svg> element inside the <g> and instead copies the content.
+      const parser = new DOMParser();
+      const svgDoc = parser.parseFromString(symbolData.svg, "image/svg+xml");
+      const symbolSvgElement = svgDoc.documentElement; // This is the <svg> element from the string
+
+      if (symbolSvgElement && symbolSvgElement.nodeName === 'svg') {
+        // Copy the content (children) of the parsed <svg> element into the new group
+        newSymbolGroup.innerHTML = symbolSvgElement.innerHTML;
+        // console.log('[CanvasWorkspace] handleDrop: Content of parsed SVG set on new group. Children count:', newSymbolGroup.children.length);
+        if (newSymbolGroup.children.length === 0 && symbolSvgElement.innerHTML.trim() !== '') {
+           console.warn('[CanvasWorkspace] handleDrop: newSymbolGroup has no children after setting innerHTML from parsed SVG, but SVG content was not empty.'); // Keep this warning
+        }
+      } else {
+        console.error('[CanvasWorkspace] handleDrop: Failed to parse SVG string or root is not <svg>. Falling back to original SVG string for safety.', symbolSvgElement ? symbolSvgElement.nodeName : 'null'); // Keep this error
+        // Fallback to original method if parsing fails or structure is unexpected
+        newSymbolGroup.innerHTML = symbolData.svg;
+        if (newSymbolGroup.children.length === 0 && symbolData.svg.trim() !== '') {
+          console.warn('[CanvasWorkspace] handleDrop: Fallback newSymbolGroup has no children after setting innerHTML, but SVG string was not empty.'); // Keep this warning
+        }
+      }
+
+      const svgRect = this.svg.getBoundingClientRect();
+      // console.log('[CanvasWorkspace] handleDrop: SVG getBoundingClientRect:', svgRect);
+      // console.log('[CanvasWorkspace] handleDrop: Event clientX, clientY:', event.clientX, event.clientY);
+      // console.log('[CanvasWorkspace] handleDrop: Canvas currentX, currentY, currentScale:', this.currentX, this.currentY, this.currentScale);
+
+      // Convert client coordinates to SVG coordinates
+      const svgX = (event.clientX - svgRect.left - this.currentX) / this.currentScale;
+      const svgY = (event.clientY - svgRect.top - this.currentY) / this.currentScale;
+      // console.log('[CanvasWorkspace] handleDrop: Calculated SVG coordinates (svgX, svgY):', svgX, svgY);
+
+      newSymbolGroup.setAttribute('transform', `translate(${svgX}, ${svgY})`);
+      // console.log('[CanvasWorkspace] handleDrop: transform attribute set to:', newSymbolGroup.getAttribute('transform'));
+
+      this.g.appendChild(newSymbolGroup);
+      // console.log(`[CanvasWorkspace] handleDrop: Symbol "${symbolData.name}" appended to main group 'g'. Current children of g:`, this.g.children.length);
+
+    } catch (error) {
+      console.error('[CanvasWorkspace] handleDrop: Failed to parse or handle dropped symbol data:', error); // Keep this error
+    }
   }
 
   handleMouseDown(event) {
