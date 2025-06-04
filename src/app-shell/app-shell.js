@@ -1,6 +1,7 @@
 import BaseComponent from '../BaseComponent.js';
 import SymbolLibrary from '../symbol-library/symbol-library.js';
 
+
 class AppShell extends BaseComponent {
   constructor() {
     super();

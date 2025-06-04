@@ -4,7 +4,6 @@ class SymbolLibrary extends BaseComponent {
   constructor() {
     super();
   }
-
   connectedCallback() {
     this.innerHTML = `
       <div style="border: 1px solid #ccc; padding: 10px; margin: 5px;">
@@ -26,3 +25,4 @@ class SymbolLibrary extends BaseComponent {
 
 customElements.define('symbol-library', SymbolLibrary);
 export default SymbolLibrary;
+
