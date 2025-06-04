@@ -15,33 +15,52 @@ class AppShell extends BaseComponent {
             display: flex;
             flex-direction: column;
             height: 100vh;
-            width: 100vw; /* Changed from 100% to 100vw for full viewport width */
+            width: 100vw;
             margin: 0;
-            font-family: sans-serif;
-            background-color: #fff; /* Default background for the shell */
+            font-family: Arial, Helvetica, sans-serif;
+            background-color: #F7FAFC; /* App background - very light grey */
         }
 
-        app-shell > header,
-        app-shell > footer {
-            padding: 10px;
-            background-color: #e0e0e0; /* Light grey */
-            flex-shrink: 0; /* Prevent shrinking */
-            text-align: center;
-        }
-
-        app-shell > .content-wrapper { /* New class for the div containing nav and main */
-            display: flex;
-            flex-grow: 1; /* Takes up remaining space */
-            overflow: hidden; /* Prevent content from breaking layout */
-        }
-
-        app-shell nav {
-            width: 200px;
-            border-right: 1px solid #ccc;
-            padding: 10px;
-            background-color: #f0f0f0; /* Slightly different grey for nav */
+        app-shell > header {
+            padding: 0.5rem 1rem; /* Reduced padding */
+            background-color: #4A5568; /* Muted dark blue/grey */
+            color: #F7FAFC; /* Light text */
             flex-shrink: 0;
-            overflow-y: auto; /* If nav content gets long */
+            text-align: left; /* Align title left */
+            font-size: 0.9rem; /* Smaller font for header content */
+            line-height: 1.2;
+            border-bottom: 1px solid #2D3748; /* Darker border */
+        }
+
+        app-shell > header h1 {
+            font-size: 1.1rem; /* Smaller h1 */
+            margin: 0;
+            font-weight: 600;
+        }
+
+        app-shell > footer {
+            padding: 0.25rem 1rem; /* Reduced padding */
+            background-color: #E2E8F0; /* Light grey, less prominent */
+            color: #4A5568; /* Darker text */
+            font-size: 0.75rem;
+            text-align: center;
+            flex-shrink: 0;
+            border-top: 1px solid #CBD5E0;
+        }
+
+        app-shell > .content-wrapper {
+            display: flex;
+            flex-grow: 1;
+            overflow: hidden;
+        }
+
+        app-shell nav { /* This is where symbol-library goes */
+            width: 220px; /* Slightly wider for new symbol layout */
+            border-right: 1px solid #CBD5E0; /* Softer border */
+            padding: 0; /* Remove padding, symbol-library will handle its own */
+            background-color: #E2E8F0; /* Light grey nav area */
+            flex-shrink: 0;
+            overflow-y: auto;
         }
 
         app-shell main {
@@ -54,24 +73,22 @@ class AppShell extends BaseComponent {
         /* Ensure canvas-workspace (if present) can fill the main area */
         app-shell main canvas-workspace {
             flex-grow: 1;
-            border: 1px dashed #aaa; /* For visualizing its bounds during dev */
+            /* border: 1px dashed #aaa; /* Removed for production look */
         }
       </style>
       <header>
-        <h1>Dynamic Systems Modeler</h1>
+        <h1>DSM</h1> <!-- Shortened Title -->
       </header>
       <div class="content-wrapper">
         <nav>
           <symbol-library></symbol-library>
         </nav>
         <main>
-          <!-- Placeholder for canvas-workspace -->
           <canvas-workspace></canvas-workspace>
         </main>
       </div>
       <footer>
-        <p>App Shell Footer</p>
-        <p id="route-info">Current Route: </p>
+        <p id="route-info">Status: Ready</p> <!-- Simplified footer -->
       </footer>
     `;
 

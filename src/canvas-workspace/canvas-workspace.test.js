@@ -302,7 +302,11 @@ describe('Drop Functionality', () => {
     // Note: innerHTML of an SVG element might be cased differently by the parser or serialized differently.
     // It's safer to check for structural elements or specific attributes if possible.
     // For this case, if the SVG string is simple and controlled, direct match might be okay.
-    expect(addedSymbolGroup.innerHTML).toBe(mockSymbolData.svg);
+    // AFTER THE FIX: addedSymbolGroup.innerHTML will be the *content* of the mockSymbolData.svg, not the full string.
+    const parser = new DOMParser();
+    const svgDoc = parser.parseFromString(mockSymbolData.svg, "image/svg+xml");
+    const expectedInnerSvg = svgDoc.documentElement.innerHTML;
+    expect(addedSymbolGroup.innerHTML).toBe(expectedInnerSvg);
 
     const expectedSvgX = (clientX - mockBoundingClientRect.left - element.currentX) / element.currentScale;
     const expectedSvgY = (clientY - mockBoundingClientRect.top - element.currentY) / element.currentScale;
@@ -340,7 +344,11 @@ describe('Drop Functionality', () => {
     const addedSymbolGroup = element.g.lastChild;
     expect(addedSymbolGroup).not.toBeNull();
     expect(addedSymbolGroup.tagName.toLowerCase()).toBe('g');
-    expect(addedSymbolGroup.innerHTML).toBe(mockSymbolData.svg);
+    // AFTER THE FIX: addedSymbolGroup.innerHTML will be the *content* of the mockSymbolData.svg, not the full string.
+    const parser = new DOMParser();
+    const svgDoc = parser.parseFromString(mockSymbolData.svg, "image/svg+xml");
+    const expectedInnerSvg = svgDoc.documentElement.innerHTML;
+    expect(addedSymbolGroup.innerHTML).toBe(expectedInnerSvg);
 
     const expectedSvgX = (clientX - mockBoundingClientRect.left - element.currentX) / element.currentScale;
     const expectedSvgY = (clientY - mockBoundingClientRect.top - element.currentY) / element.currentScale;
