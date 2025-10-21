@@ -20,7 +20,7 @@
   "homepage": "https://github.com/sholtomaud/energese2#readme",
   "devDependencies": {
     "jsdom": "^26.1.0",
-    "vite": "^6.3.5",
+    "vite": "^6.4.1",
     "vitest": "^3.2.1"
   },
   "vitest": {
